@@ -1,0 +1,28 @@
+{
+  "name": "graph-challenge-user-directory",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/msal-browser": "^2.32.0",
+    "@azure/msal-react": "^1.5.0",
+    "@fluentui/react": "^8.103.2",
+    "@microsoft/microsoft-graph-client": "^3.0.4",    
+    "@vitejs/plugin-react": "^2.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-redux": "^8.0.5"
+  },
+  "devDependencies": {
+    "@types/microsoft-graph": "^2.24.0",
+    "typescript": "^4.9.3",
+    "vite": "^3.2.4"
+  }
+}
