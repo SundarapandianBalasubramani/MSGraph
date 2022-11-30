@@ -6,6 +6,7 @@ import { Stack, StackItem, Text, PrimaryButton, DefaultButton, Toggle } from "@f
 import { Person, Presence } from "microsoft-graph"
 import { useEffect, useState } from "react"
 import { Departments } from "./Department"
+import { Filter } from "./Filter"
 import { Loader } from "./Loader"
 import { Search } from "./Search"
 import { User } from "./User"
@@ -121,7 +122,7 @@ export const Directory = (props: AppContext) => {
     }
 
 
-    const onToggle = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
+    const onToggle = (checked: boolean) => {
         setLetter('');
         setFilter('');
         setPage(1);
@@ -154,42 +155,41 @@ export const Directory = (props: AppContext) => {
 
     }
 
-    return <Stack >
-        <StackItem align="center">
-            <Text block variant={"xLargePlus"}>Graph API User Directory App</Text>
-        </StackItem>
-        <StackItem align="end" style={{ marginBottom: 20 }}>
-            <Text variant="large">Welcome {data?.user?.displayName || ''}!</Text>
-        </StackItem>
-        <StackItem align="end" style={{ marginBottom: 20 }}>
-            <PrimaryButton onClick={props.signOut!}>Sign out</PrimaryButton>
-        </StackItem>
-        <StackItem  >
-            <Stack horizontal tokens={{ childrenGap: 20, padding: 20 }}>
-                <StackItem grow={3} >
-                    <Stack tokens={{ childrenGap: 20 }}>
-                        <Text style={{ width: 200 }} variant={"medium"}>Organization and Related People works only if no team is selected </Text>
-                        <Toggle checked={userSource} offText="Organization" onText="Frequent Contacts" onChange={onToggle} />
-                        <Departments data={data.teams} teams={teams} team={selectedTeam} />
-                        <PrimaryButton style={{ width: 250 }} onClick={reset}>Reset</PrimaryButton>
+    return <>
+        <Stack className="container">
+            <StackItem align="center">
+                <Text block variant={"xLargePlus"}>Graph API User Directory App</Text>
+            </StackItem>
+            <StackItem align="end" style={{ marginBottom: 20 }}>
+                <Text variant="large">Welcome {data?.user?.displayName || ''}!</Text>
+            </StackItem>
+            <StackItem align="end" style={{ marginBottom: 20 }}>
+                <PrimaryButton onClick={props.signOut!}>Sign out</PrimaryButton>
+            </StackItem>
+            <StackItem>
+                <Stack horizontal tokens={{ childrenGap: 20 }} style={{ minHeight: 600, paddingTop: 40, paddingBottom: 40 }}>
+                    <StackItem >
+                        <Search onChange={onChange} onClick={givenNameStartsWith} letter={letter} searchValue={letter} onSearch={search} />
+                        <Stack wrap tokens={{ childrenGap: 20, padding: 40 }} horizontal >
+                            {persons.map(p => <StackItem key={p.id}><User key={p.id} user={p} authProvider={props.authProvider} /></StackItem>)}
+                        </Stack>
+                        <Stack verticalAlign="center" horizontalAlign="center">
+                            {persons.length === 0 && !showLoader && <h2>No Results found</h2>}
+                        </Stack>
+                    </StackItem>
+                </Stack>
+            </StackItem>
+            <StackItem align="center">
+                {!showLoader &&
+                    <Stack tokens={{ childrenGap: 20 }} horizontal>
+                        <DefaultButton onClick={previousClick} disabled={page === 1}>{"<<"}</DefaultButton>
+                        <Text block variant={"xLarge"}>Page {page}</Text>                       
+                        <DefaultButton onClick={nextClick} disabled={!Boolean(next[(page + 1)])}>{">>"}</DefaultButton>
                     </Stack>
-                </StackItem>
-                <StackItem grow={4} >
-                    <Search onChange={onChange} onClick={givenNameStartsWith} letter={letter} searchValue={letter} onSearch={search} />
-                    <Stack wrap tokens={{ childrenGap: 20, padding: 40 }} horizontal >
-                        {persons.map(p => <StackItem key={p.id}><User key={p.id} user={p} authProvider={props.authProvider} /></StackItem>)}
-                        {persons.length === 0 && !showLoader && <h2>No Results found</h2>}
-                    </Stack>
-                </StackItem>
-            </Stack>
-        </StackItem>
-        <StackItem align="center">
-            <Stack tokens={{ childrenGap: 20 }} horizontal>
-                {/* <DefaultButton onClick={previousClick} disabled={page === 1}>Previous</DefaultButton>
-                <Text block variant={"xLargePlus"}>{persons.length} Users of Page {page}</Text>
-                <DefaultButton onClick={nextClick} disabled={!Boolean(next[(page + 1)])}>Next</DefaultButton> */}
-            </Stack>
-        </StackItem>
-        <Loader show={showLoader} />
-    </Stack>
+                }
+            </StackItem>
+            <Loader show={showLoader} />
+        </Stack>
+        <Filter onToggle={onToggle} reset={reset} team={selectedTeam} teams={teams} data={data.teams} />
+    </>
 }

@@ -14,18 +14,15 @@ export const Search = (props: ISearch) => {
     const Buttons = () => {
         const buttons = [];
         for (let k = 65; k < 91; k++) {
-            const str = String.fromCharCode(k);
-            if (props.letter === str)
-                buttons.push(<PrimaryButton onClick={() => { props.onClick(str) }} className="alphabetbutton" key={str}>{str}</PrimaryButton>);
-            else
-                buttons.push(<DefaultButton onClick={() => { props.onClick(str) }} className="alphabetbutton" key={str}>{str}</DefaultButton>);
+            const str = String.fromCharCode(k);            
+            buttons.push(<DefaultButton {...(props.letter === str && {disabled: true})} onClick={() => { props.onClick(str) }} className="alphabetbutton" key={str}>{str}</DefaultButton>);
         }
         return buttons;
     }
     return <Stack tokens={{ childrenGap: 20 }}>
         <StackItem>
             <SearchBox
-                placeholder="Search"
+                placeholder="Search"                
                 onSearch={props.onSearch}
                 onChange={props.onChange}
             />
