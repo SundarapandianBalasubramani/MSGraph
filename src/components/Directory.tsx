@@ -1,11 +1,10 @@
 import { AppContext } from "@/context"
 import { useInit } from "@/hooks/useInit"
-import { getTeamsPersons, getUsersPresence } from "@/service/teams"
-import { getPeople } from "@/service/user"
-import { Stack, StackItem, Text, PrimaryButton, DefaultButton, Toggle } from "@fluentui/react"
+import { getTeams, getUsersPresence } from "@/service/teams"
+import { getOrgPeople, getPeople, UserResponseType } from "@/service/user"
+import { Stack, StackItem, Text, PrimaryButton, DefaultButton } from "@fluentui/react"
 import { Person, Presence } from "microsoft-graph"
 import { useEffect, useState } from "react"
-import { Departments } from "./Department"
 import { Filter } from "./Filter"
 import { Loader } from "./Loader"
 import { Search } from "./Search"
@@ -14,140 +13,164 @@ import { User } from "./User"
 export type PageSet = {
     [key: number]: string | undefined
 }
-//$filter=startswith(displayName,'a')
-const peopleUrl = "$select=id,givenName,surname,displayName,jobTitle,department,userPrincipalName&$orderby=displayName desc&$count=true&$top=100";
+
+export type PersonWithPresence = Person & Presence;
+
+
+export const App = (props: AppContext) => {
+    const data = useInit();
+    return data ? <Directory {...props} data={data} /> : <></>;
+}
+
+export const getSearchType = (): boolean => {
+    const type = window.sessionStorage.getItem('type');
+    return type === null ? true : false;
+}
 
 export const Directory = (props: AppContext) => {
-    const data = useInit();
     const [showLoader, setShowLoader] = useState(true);
-    const [persons, setPerson] = useState<Person[]>([]);
+    const [personsWithPresence, setPersonWithPresence] = useState<PersonWithPresence[]>([]);
     const [selectedTeam, setTeam] = useState('');
-    const [filter, setFilter] = useState('');
+    //const [filter, setFilter] = useState('');
     const [letter, setLetter] = useState('');
-    const [next, setNext] = useState<PageSet>({});
+    // const [next, setNext] = useState<PageSet>({});
     const [page, setPage] = useState(1);
-    const [userSource, setUserSource] = useState(true);
-    const [url, setUrl] = useState('/me/people');
-    useEffect(() => {
-        if (data && data.people) {
-            setNext({ 2: data.next });
-            setPerson(data.people);
+
+    const updatePresence = async (response: UserResponseType, pageno: number) => {
+        if (response && response.value.length) {
+            let ids: string[] = selectedTeam.length === 0 ? response.value.map(p => p.id!) : response.value.map((p: any) => p.userId!);
+            const usersPresence = await getUsersPresence(props.authProvider!, {
+                "ids": ids
+            });
+            let usersWithPresence: PersonWithPresence[] = [];
+            usersWithPresence = response.value.map(p => {
+                const userPresence = usersPresence.find(pre => pre.id === p.id);
+                return userPresence ? { ...userPresence, ...p } : p;
+            });
+            setPersonWithPresence(usersWithPresence);
+            console.log(usersWithPresence);
+            //setSkipTokenValue(response['@odata.nextLink'], pageno);
         }
         setShowLoader(false);
-    }, [data.user]);
+    };
+
 
     useEffect(() => {
-        getPeopleData(url);
-
-    }, [userSource]);
-
-    useEffect(() => {
-        if (filter.length > 0) {
-            if (selectedTeam.length === 0)
-                getPeopleData(url + '?' + filter + peopleUrl);
-            else
-                getTeamsPeopleData(selectedTeam);
-        }
-
-    }, [filter, url]);
+        window.sessionStorage.removeItem('type');
+    }, []);
 
     useEffect(() => {
-        getTeamsPeopleData(selectedTeam);
-    }, [selectedTeam]);
-
-    const getPeopleData = async (url: string) => {
-        const result = await getPeople(props.authProvider!, url);
-        console.log(result);
-        const pageNo: number = page + 1;
-        if (result['@odata.nextLink']) {
-            setNext({ ...next, [pageNo]: result['@odata.nextLink'] });
-            console.log({ ...next, [pageNo]: result['@odata.nextLink'] });
+        if (props.data && props.data.people) {
+            updatePresence(props.data.people, page);
         }
-        setPerson(result.value);
-        setShowLoader(false);
-    }
+    }, [props.data?.people]);
 
-    const getTeamsPeopleData = async (team: string) => {
-        const result = await getTeamsPersons(props.authProvider!, team, letter);
-        console.log(result);
-        const pageNo: number = page + 1;
-        if (result['@odata.nextLink']) {
-            setNext({ ...next, [pageNo]: result['@odata.nextLink'] });
-            console.log({ ...next, [pageNo]: result['@odata.nextLink'] });
-        }
-        setPerson(result.value);
-        setShowLoader(false);
+    useEffect(() => {
+        letter.length && fetchData();
+    }, [letter]);
+
+    const fetchData = () => {
+        if (selectedTeam.length === 0)
+            getData(page);
+        else
+            getTeamsPeopleData(selectedTeam, page);
     }
 
 
+
+    // const setSkipTokenValue = (nextLink: string | undefined, pageno: number) => {
+    //     let skip = undefined;
+    //     if (nextLink)
+    //         skip = nextLink.substring(nextLink.lastIndexOf('skipToken=') + 10);
+    //     setNext({ ...next, [pageno]: skip });
+    //     setPage(pageno);
+    //     console.log(pageno, { ...next, [pageno]: skip });
+    // }
+
+
+
+    // const getSkipTokenValue = (pageno: number): string => {
+    //     const val = pageno in next ? next[pageno] : '';
+    //     return val ? val : '';
+    // }
+
+
+    const getData = async (pageno: number) => {
+        // const result = getSearchType() ? await getPeople(props.authProvider!, letter, getSkipTokenValue(pageno))
+        //     : await getOrgPeople(props.authProvider!, filter, getSkipTokenValue(pageno));
+        // updatePresence(result, pageno);
+        const result = getSearchType() ? await getPeople(props.authProvider!, letter, '')
+            : await getOrgPeople(props.authProvider!, letter, '');
+        updatePresence(result, pageno);
+
+    }
+
+    const getTeamsPeopleData = async (team: string, pageno: number) => {
+        const result = await getTeams(props.authProvider!, team, letter, '');
+        console.log(result);
+        updatePresence(result, pageno);
+    }
 
     const givenNameStartsWith = (l: string) => {
         setLetter(l);
-        if (!userSource)
-            setFilter(`$filter=startswith(givenName, \'${l.toLowerCase()}\') or startswith(surName, \'${l.toLowerCase()}\')&ConsistencyLevel=eventual&`);
-        else
-            setFilter(`$search=${l.toLowerCase()}&`);
         setPage(1);
-        setNext({});
-        setPerson([]);
+        //setNext({});
         setShowLoader(true);
+        //fetchData();
     }
 
     const teams = (team: string) => {
-        setNext({});
-        setPerson([]);
-        setFilter('');
-        setLetter('');
         setTeam(team);
+        //setNext({});        
+        setLetter('');
         setShowLoader(true);
+        getTeamsPeopleData(team, 1);
     }
 
-
-    const nextClick = () => {
-        setPage(page + 1);
+    const getNavClick = (pageno: number) => {
         setShowLoader(true);
-        getPeopleData(next[(page + 1)]!);
+        if (selectedTeam.length === 0)
+            getData(pageno);
+        else
+            getTeamsPeopleData(selectedTeam, pageno);
     }
 
-    const previousClick = () => {
+    const goNext = async () => {
+        getNavClick(page + 1);
+
+    };
+    const goPrevious = () => {
         setShowLoader(true);
         if (page > 2) {
-            setPage(page - 1);
-            getPeopleData(next[(page - 1)]!);
+            getNavClick(page - 1);
         } else {
-            setPage(1);
-            setNext({});
-            getPeopleData(url + '?' + filter + peopleUrl);
+            getNavClick(1);
+            //setNext({});
         }
     }
 
 
     const onToggle = (checked: boolean) => {
+        if (checked) window.sessionStorage.setItem('type', "0"); else
+            window.sessionStorage.removeItem('type')
+        setShowLoader(true);
         setLetter('');
-        setFilter('');
         setPage(1);
         setTeam('');
-        setNext({});
-        setPerson([]);
-        setShowLoader(true);
-        setUserSource(checked as boolean);
-        setUrl(checked ? "/me/people" : "/users");
+        //setNext({});
+        getData(1);
     }
 
     const reset = () => {
         setLetter('');
-        setFilter('');
         setPage(1);
         setTeam('');
-        setUserSource(true);
-        setNext({});
-        setPerson([]);
+        //setNext({});
         setShowLoader(true);
-        getPeopleData(url + '?' + filter + peopleUrl);
     }
 
     const search = (k: string) => {
-        if (k.length > 2)
+        if (k.length !== 0)
             givenNameStartsWith(k);
     }
 
@@ -161,35 +184,33 @@ export const Directory = (props: AppContext) => {
                 <Text block variant={"xLargePlus"}>Graph API User Directory App</Text>
             </StackItem>
             <StackItem align="end" style={{ marginBottom: 20 }}>
-                <Text variant="large">Welcome {data?.user?.displayName || ''}!</Text>
+                <Text variant="large">Welcome {props.data?.user?.displayName || ''}!</Text>
             </StackItem>
             <StackItem align="end" style={{ marginBottom: 20 }}>
                 <PrimaryButton onClick={props.signOut!}>Sign out</PrimaryButton>
             </StackItem>
-            <StackItem>
+            <StackItem align="center">
                 <Stack horizontal tokens={{ childrenGap: 20 }} style={{ minHeight: 600, paddingTop: 40, paddingBottom: 40 }}>
                     <StackItem >
                         <Search onChange={onChange} onClick={givenNameStartsWith} letter={letter} searchValue={letter} onSearch={search} />
                         <Stack wrap tokens={{ childrenGap: 20, padding: 40 }} horizontal >
-                            {persons.map(p => <StackItem key={p.id}><User key={p.id} user={p} authProvider={props.authProvider} /></StackItem>)}
+                            {personsWithPresence.map(p => <StackItem key={p.id}><User key={p.id} user={p} authProvider={props.authProvider} /></StackItem>)}
                         </Stack>
                         <Stack verticalAlign="center" horizontalAlign="center">
-                            {persons.length === 0 && !showLoader && <h2>No Results found</h2>}
+                            {personsWithPresence.length === 0 && !showLoader && <h2>No Results found</h2>}
                         </Stack>
+                        {/* {!showLoader &&
+                            <Stack tokens={{ childrenGap: 20 }} horizontal verticalAlign="center" horizontalAlign="center" style={{ marginTop: 40 }}>
+                                <DefaultButton onClick={goPrevious} disabled={page === 1}>{"<<"}</DefaultButton>
+                                <Text block variant={"xLarge"}>Page {page}</Text>
+                                <DefaultButton onClick={goNext} disabled={!Boolean(next[(page)])}>{">>"}</DefaultButton>
+                            </Stack>
+                        } */}
                     </StackItem>
                 </Stack>
             </StackItem>
-            <StackItem align="center">
-                {!showLoader &&
-                    <Stack tokens={{ childrenGap: 20 }} horizontal>
-                        <DefaultButton onClick={previousClick} disabled={page === 1}>{"<<"}</DefaultButton>
-                        <Text block variant={"xLarge"}>Page {page}</Text>                       
-                        <DefaultButton onClick={nextClick} disabled={!Boolean(next[(page + 1)])}>{">>"}</DefaultButton>
-                    </Stack>
-                }
-            </StackItem>
             <Loader show={showLoader} />
         </Stack>
-        <Filter onToggle={onToggle} reset={reset} team={selectedTeam} teams={teams} data={data.teams} />
+        <Filter onToggle={onToggle} reset={reset} team={selectedTeam} teams={teams} data={props.data?.teams} />
     </>
 }

@@ -32,6 +32,7 @@ export const Departments = (props: IDepartment) => {
     const onLinkClick = (ev?: React.MouseEvent<HTMLElement>, item?: INavLink) => {
         if (item) {
             props.teams(item.key as string);
+            console.log(item);
         }
     }
     return (

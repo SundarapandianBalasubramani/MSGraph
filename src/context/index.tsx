@@ -3,7 +3,7 @@ import { AuthCodeMSALBrowserAuthenticationProvider } from '@microsoft/microsoft-
 import { useMsal } from "@azure/msal-react";
 import { InteractionType, PublicClientApplication } from "@azure/msal-browser";
 import { config } from "@/auth";
-import { getUser } from "@/service/user";
+import { getUser, UserInfoResponse } from "@/service/user";
 import { User } from 'microsoft-graph';
 // <AppContextSnippet>
 export interface AppUser {
@@ -19,13 +19,14 @@ export interface AppError {
     debug?: string
 };
 
-export type AppContext = {    
+export type AppContext = {
     error?: AppError;
     signIn?: MouseEventHandler<HTMLElement>;
     signOut?: MouseEventHandler<HTMLElement>;
     displayError?: Function;
     clearError?: Function;
     authProvider?: AuthCodeMSALBrowserAuthenticationProvider;
+    data?: Partial<UserInfoResponse>
 }
 
 const appContext = createContext<AppContext>({

@@ -1,21 +1,25 @@
 import { BatchRequestContent, BatchRequestStep, BatchResponseContent } from "@microsoft/microsoft-graph-client";
 import { AuthCodeMSALBrowserAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/authCodeMsalBrowser";
-import { Person, Team, User } from 'microsoft-graph';
+import { Person, Team, User, } from 'microsoft-graph';
 import { ensureClient } from "./ensureClient";
+
+export const limit = 50;
+
+export type UserResponseType = {
+    '@odata.context'?: string,
+    value: Person[],
+    '@odata.nextLink'?: string
+}
 
 export type UserInfoResponse = {
     user: User,
     teams: Team[],
-    people: Person[],
-    next?: string,
+    people: UserResponseType,
 };
 
 export async function getUser(authProvider: AuthCodeMSALBrowserAuthenticationProvider): Promise<User> {
     const client = ensureClient(authProvider);
-
-    // Return the /me API endpoint result as a User object
     const user: User = await client!.api('/me')
-        // Only retrieve the specific fields needed
         .select('displayName,mail,mailboxSettings,userPrincipalName')
         .get();
 
@@ -24,22 +28,12 @@ export async function getUser(authProvider: AuthCodeMSALBrowserAuthenticationPro
 
 export async function getUserPhoto(authProvider: AuthCodeMSALBrowserAuthenticationProvider, id: string): Promise<any> {
     const client = ensureClient(authProvider);
-    // Return the /me API endpoint result as a User object
     const photo: User = await client!.api(`/users/${id}/photo/$value`)
         .get();
-
     return photo;
 }
 
-export async function getUserPhotoAndPresence(authProvider: AuthCodeMSALBrowserAuthenticationProvider, id: string): Promise<any> {
-    const client = ensureClient(authProvider);    
-    const photo = client!.api(`/users/${id}/photo/$value`)
-        .get();
-    const presence = client!.api(`/users/${id}/presence`)
-        .get();
-    const responses = await Promise.all([photo, presence]);
-    return responses;
-}
+
 
 
 export async function getUserAndTeamsInformation(authProvider: AuthCodeMSALBrowserAuthenticationProvider, batchRequestContent: BatchRequestContent): Promise<Partial<UserInfoResponse>> {
@@ -61,20 +55,83 @@ export async function getUserAndTeamsInformation(authProvider: AuthCodeMSALBrows
         result.teams = teams.value;
     }
     if (peopleResponse.ok) {
-        let people = await peopleResponse.json();
-        if (people['@odata.nextLink']) {
-            result.next = people['@odata.nextLink'];
-        }
-        result.people = people.value;
+        result.people = await peopleResponse.json();
     }
     return result;
 }
 
-
-export async function getPeople(authProvider: AuthCodeMSALBrowserAuthenticationProvider, url: string): Promise<any> {
-    const client = ensureClient(authProvider);    
-    const people = await client!.api(url)
+export async function getOrgPeople(authProvider: AuthCodeMSALBrowserAuthenticationProvider,
+    filter: string, skipToken: string): Promise<UserResponseType> {
+    const client = ensureClient(authProvider);
+    let people;
+    if(filter.length && skipToken.length){
+         people = await client!.api(`/users`)        
+        .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+        .top(limit)
+        .filter(`startswith(displayName, \'${filter.toLowerCase()}\')`)
+        .skipToken(skipToken)
         .get();
+    }
+    else if(filter.length){
+         people = await client!.api(`/users`)        
+        .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+        .top(limit)
+        .filter(`startswith(displayName, \'${filter.toLowerCase()}\')`)        
+        .get();
+    }
+    else if(skipToken.length){
+        people = await client!.api(`/users`)        
+       .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+       .top(limit)       
+       .skipToken(skipToken)
+       .get();
+   }
+    else{
+         people = await client!.api(`/users`)        
+        .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+        .top(limit)               
+        .get();
+    }
+  
+    return people;
+}
 
+export async function getPeople(authProvider: AuthCodeMSALBrowserAuthenticationProvider,
+    filter: string, skipToken: string): Promise<UserResponseType> {
+    const client = ensureClient(authProvider);
+    let people;
+    if (filter.length && skipToken.length) {
+        people = await client!.api(`/me/people`)
+            .count()
+            .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+            .top(limit)
+            .search(filter)
+            .orderby('displayName').skipToken(skipToken)
+            .get();
+    }
+    else if (filter.length) {
+        people = await client!.api(`/me/people`)
+            .count()
+            .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+            .top(limit)
+            .search(filter)
+            .orderby('displayName')
+            .get();
+    }
+    else if (skipToken.length) {
+        people = await client!.api(`/me/people`)
+            .count()
+            .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+            .top(limit)            
+            .orderby('displayName').skipToken(skipToken)
+            .get();
+    }
+    else  {
+        people = await client!.api(`/me/people`)
+            .count()
+            .select('id,givenName,surname,displayName,jobTitle,department,userPrincipalName')
+            .top(limit)         
+            .get();
+    }   
     return people;
 }

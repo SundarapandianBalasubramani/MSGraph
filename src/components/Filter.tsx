@@ -21,7 +21,7 @@ export const Filter = ({ data, teams, team, reset, onToggle }: IFilter) => {
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
     const onChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
         if (option)
-            onToggle(option.key === "Organization")
+            onToggle(option.key === "2")
     }
     return <div>
         <PrimaryButton text="Apply Filter" onClick={openPanel} className={"filter-btn"} />

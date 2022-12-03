@@ -35,10 +35,14 @@ msalInstance.addEventCallback((event: EventMessage) => {
 });
 // </MsalInstanceSnippet>
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-     <App pca={msalInstance} />    
-  </React.StrictMode>
+// ReactDOM.createRoot(document.getElementById("root")!).render(
+//   <React.StrictMode>
+//      <App pca={msalInstance} />    
+//   </React.StrictMode>
+// );
+
+ReactDOM.createRoot(document.getElementById("root")!).render( 
+     <App pca={msalInstance} />     
 );
 
 
